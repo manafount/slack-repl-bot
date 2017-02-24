@@ -10,6 +10,8 @@ respond immediately with a single line response.
 */
 
 var wordfilter = require('wordfilter')
+let os = require('os');
+let safeEval = require('safe-eval');
 
 module.exports = controller => {
   /* Collect some very simple runtime stats for use in the uptime/debug command */
@@ -21,6 +23,21 @@ module.exports = controller => {
   controller.on('heard_trigger', () => stats.triggers++)
 
   controller.on('conversationStarted', () => stats.convos++)
+
+  controller.hears(['^run `(.*)`', '^`(.*)`'],['direct_message,direct_mention,mention'],function(bot,message) {
+    let script = message.match[1];
+    try {
+      result = `=> ${safeEval(script)}`;
+    }
+    catch (e) {
+      result = `There was an error! ${e.message}`;
+    }
+    bot.reply(message, `\`${result}\``);
+  });
+
+  controller.hears(['^code', '^source', '^github'],['direct_message,direct_mention,mention'],function(bot,message) {
+    bot.reply(message, `Find my source code at: https://github.com/manafount/slack-repl-bot`);
+  });
 
   controller.hears(['^uptime', '^debug'], 'direct_message,direct_mention', (bot, message) => {
     bot.createConversation(message, (err, convo) => {
@@ -47,13 +64,6 @@ module.exports = controller => {
     }
   })
 
-  /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-  /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-  /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-  /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-  /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-  /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-  /* Utility function to format uptime */
   function formatUptime (uptime) {
     var unit = 'second'
     if (uptime > 60) {
